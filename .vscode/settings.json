@@ -1,0 +1,9 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "c:\\Users\\kbsle\\Workspace\\kml",
+            "binaryPath": "c:\\Users\\kbsle\\Workspace\\kml\\test",
+            "binaryArgs": []
+        }
+    ]
+}
