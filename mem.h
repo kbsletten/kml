@@ -28,35 +28,35 @@
 #define SPEC_TYPE_DAT   0x10 /* 00010000 */
 
 /*
-    Logical structure.
-    The lower bits must be zero.
-    The shape of the struct is defined by the following bit pattern ending in SPEC_END.
+	Logical structure.
+	The lower bits must be zero.
+	The shape of the struct is defined by the following bit pattern ending in SPEC_END.
 */
 #define SPEC_TYPE_STR   0x20 /* 00100000 */
 
 /*
-    Runtime-defined array value.
-    The length is taken from va_args.
-    The lower bits specify length field size, allowing for short-indexed arrays.
-    The shape of the array items is defined by the following byte.
+	Runtime-defined array value.
+	The length is taken from va_args.
+	The lower bits specify length field size, allowing for short-indexed arrays.
+	The shape of the array items is defined by the following byte.
 */
 #define SPEC_TYPE_ARR   0x30 /* 00110000 */
 
 /*
-    Pointer value.
-    The lower bits must be 0x0F.
+	Pointer value.
+	The lower bits must be 0x0F.
 */
 #define SPEC_TYPE_PTR   0x70 /* 01110000 */
 
 /*
-    Flag to define inline arrays.
-    The number of items is specified by the following byte.
-    If the following byte also has SPEC_MULT set, the number continues into the next byte and so on.
-    Overflowing SIZE_MAX results in an error.
+	Flag to define inline arrays.
+	The number of items is specified by the following byte.
+	If the following byte also has SPEC_MULT set, the number continues into the next byte and so on.
+	Overflowing SIZE_MAX results in an error.
 */
 #define SPEC_MULT       0x80 /* 10000000 */
 
 /*
-    `spec` is null-terminated string that describes the memory layout.
+	`spec` is null-terminated string that describes the memory layout.
 */
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...);
