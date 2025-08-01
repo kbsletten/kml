@@ -29,11 +29,24 @@ struct field_info {
 	size_t count;
 } field_zero;
 
-static
-struct mem_info get_spec_size(const char **current, va_list *args);
+struct array_info {
+	size_t size;
+	size_t length;
+};
+
+#define ARRAY_MAX 8
 
 static
-struct field_info get_field_size(const char **current, va_list *args);
+struct arrays_info {
+	unsigned int count;
+	struct array_info arrays[ARRAY_MAX];
+} arrays_zero;
+
+static
+struct mem_info get_spec_size(struct arrays_info *arrays, const char **current, va_list *args);
+
+static
+struct field_info get_field_size(struct arrays_info *arrays, const char **current, va_list *args);
 
 static
 size_t round_up(size_t value, size_t alignment)
@@ -60,25 +73,51 @@ size_t get_field_type_size(char field_type)
 }
 
 static
-struct field_info get_array_size(const char **current, va_list *args)
+size_t max_value(size_t size) {
+	return (1 << (size * 8)) - 1;
+}
+
+static
+struct field_info get_array_size(size_t length_size, struct arrays_info *arrays, const char **current, va_list *args)
 {
 	struct field_info field;
-	size_t index_size = get_field_type_size(advance(current));
+	struct array_info *array;
 
-	if (!index_size) {
+	if (arrays->count >= ARRAY_MAX) {
 #ifdef DEBUG
-		fprintf(error_file, "Error: index_size is zero in get_array_size\n");
+		fprintf(error_file, "Error: arrays->count exceeds ARRAY_MAX in get_array_size\n");
 #endif
 		return field_zero;
 	}
 
-	field = get_field_size(current, args);
+	array = &arrays->arrays[arrays->count++];
+
+	array->size = length_size;
+	array->length = va_arg(*args, size_t);
+
+	if (array->size < sizeof(size_t) && array->length > max_value(array->size)) {
+#ifdef DEBUG
+		fprintf(error_file, "Error: array->length exceeds SIZE_MAX / array->size in get_array_size\n");
+#endif
+		return field_zero;
+	}
+
+	field = get_field_size(arrays, current, args);
+
+	if (!field.mem.size) {
+#ifdef DEBUG
+		fprintf(error_file, "Error: field.mem.size is zero in get_array_size\n");
+#endif
+		return field_zero;
+	}
+
+	field.count *= array->length;
 
 	return field;
 }
 
 static
-struct field_info get_field_size(const char **current, va_list *args)
+struct field_info get_field_size(struct arrays_info *arrays, const char **current, va_list *args)
 {
 	struct field_info field = { { 0, 0 }, 1 };
 	char field_type;
@@ -119,12 +158,12 @@ struct field_info get_field_size(const char **current, va_list *args)
 		case SPEC_TYPE_STR:
 			if (field_type & SPEC_SIZE) {
 #ifdef DEBUG
-				fprintf(error_file, "Error: field_type & SPEC_SIZE for SPEC_TYPE_STR in get_field_size\n");
+				fprintf(error_file, "Error: field_type & SPEC_SIZE nonzero for SPEC_TYPE_STR in get_field_size\n");
 #endif
 				return field_zero;
 			}
 
-			field.mem = get_spec_size(current, args);
+			field.mem = get_spec_size(arrays, current, args);
 
 			if (advance(current)) {
 #ifdef DEBUG
@@ -142,7 +181,7 @@ struct field_info get_field_size(const char **current, va_list *args)
 				return field_zero;
 			}
 
-			field = get_array_size(current, args);
+			field = get_array_size(get_field_type_size(field_type), arrays, current, args);
 			break;
 
 		case SPEC_TYPE_PTR:
@@ -174,13 +213,13 @@ struct field_info get_field_size(const char **current, va_list *args)
 }
 
 static
-struct mem_info get_spec_size(const char **current, va_list *args)
+struct mem_info get_spec_size(struct arrays_info *arrays, const char **current, va_list *args)
 {
 	struct mem_info mem = mem_zero;
 	struct field_info field;
 
 	while (**current) {
-		field = get_field_size(current, args);
+		field = get_field_size(arrays, current, args);
 
 		if (!field.mem.size) {
 #ifdef DEBUG
@@ -203,16 +242,31 @@ struct mem_info get_spec_size(const char **current, va_list *args)
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 {
 	const char *current = spec;
-	struct mem_info mem;
+	struct mem_info mem, length = mem_zero;
+	struct arrays_info arrays = arrays_zero;
 	va_list args;
+	unsigned int i;
+
 	va_start(args, align_ptr);
 
-	mem = get_spec_size(&current, &args);
+	mem = get_spec_size(&arrays, &current, &args);
 
 	va_end(args);
 
 	if (!mem.size) {
 		return 0;
+	}
+
+	for (i = 0; i < arrays.count; i++) {
+		length.size = round_up(length.size, arrays.arrays[i].size) + arrays.arrays[i].size;
+		if (arrays.arrays[i].size > length.align) {
+			length.align = arrays.arrays[i].size;
+		}
+	}
+
+	mem.size += round_up(length.size, mem.align);
+	if (length.align > mem.align) {
+		mem.align = length.align;
 	}
 
 	*ptr = malloc(mem.size);

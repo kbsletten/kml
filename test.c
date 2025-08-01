@@ -82,7 +82,6 @@ int main()
 	fail_get_mem(DEBUG_SPEC("\x21"));
 	fail_get_mem(DEBUG_SPEC("\xB2"));
 	fail_get_mem(DEBUG_SPEC("\x72"));
-	fail_get_mem(DEBUG_SPEC("\x15"));
 
 	test_get_mem(DEBUG_SPEC("\x10"), 1, 1);
 	test_get_mem(DEBUG_SPEC("\x90\x10"), 16, 1);
@@ -101,7 +100,7 @@ int main()
 	test_get_mem(DEBUG_SPEC("\x90\x81\x01"), 129, 1);
 
 	test_get_mem_arr(DEBUG_SPEC("\x30\x10"), 2, 3, 1);
-	test_get_mem_arr(DEBUG_SPEC("\x3F\x11"), 2, sizeof(size_t) * 2, sizeof(size_t));
+	test_get_mem_arr(DEBUG_SPEC("\x3F\x11"), 2, sizeof(size_t) + 4, sizeof(size_t));
 
 	fprintf(stdout, "%lu of %lu tests passed.\n", passed, passed + failed);
 
