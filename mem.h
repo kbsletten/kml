@@ -1,5 +1,9 @@
 #include <stddef.h>
 
+#ifdef DEBUG
+#include <stdio.h>
+#endif
+
 #define SPEC_END        0x00 /* 00000000 */
 
 #define SPEC_SIZE       0x0F /* 00001111 */
@@ -60,3 +64,9 @@
 	`spec` is null-terminated string that describes the memory layout.
 */
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...);
+
+#ifdef DEBUG
+
+void set_error_file(FILE *file);
+
+#endif

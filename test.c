@@ -10,8 +10,27 @@ unsigned long int passed = 0, failed = 0;
 static
 void fail_get_mem(const char *spec, const char *debug) {
 	void *ptr = NULL;
-	size_t align = 0;
-	size_t result = get_mem(spec, &ptr, &align);
+	size_t result, align = 0;
+#ifdef _WIN32
+	FILE *null_file = fopen("NUL", "w");
+#else
+	FILE *null_file = fopen("/dev/null", "w");
+#endif
+
+	if (null_file) {
+		set_error_file(null_file);
+	} else {
+		set_error_file(stderr);
+	}
+	
+	result = get_mem(spec, &ptr, &align);
+	
+	if (null_file) {
+		fflush(stderr);
+		fclose(null_file);
+		set_error_file(stderr);
+	}
+
 	if (result || ptr || align) {
 		fprintf(stderr, "get_mem(%s) failed: expected error, got %lu bytes with alignment %lu\n", debug, (unsigned long int)result, (unsigned long int)align);
 		failed++;
@@ -24,7 +43,10 @@ static
 void test_get_mem(const char *spec, const char *debug, size_t expected_size, size_t expected_align) {
 	void *ptr = NULL;
 	size_t align = 0;
-	size_t result = get_mem(spec, &ptr, &align);
+	size_t result;
+	
+	result = get_mem(spec, &ptr, &align);
+
 	if (result != expected_size || !ptr || align != expected_align) {
 		fprintf(stderr, "get_mem(%s) failed: expected %lu bytes with alignment %lu, got %lu bytes with alignment %lu\n", debug, (unsigned long int)expected_size, (unsigned long int)expected_align, (unsigned long int)result, (unsigned long int)align);
 		failed++;
@@ -37,7 +59,10 @@ static
 void test_get_mem_arr(const char *spec, const char *debug, size_t dim, size_t expected_size, size_t expected_align) {
 	void *ptr = NULL;
 	size_t align = 0;
-	size_t result = get_mem(spec, &ptr, &align, dim);
+	size_t result;
+	
+	result = get_mem(spec, &ptr, &align, dim);
+	
 	if (result != expected_size || !ptr || align != expected_align) {
 		fprintf(stderr, "get_mem(%s) failed: expected %lu bytes with alignment %lu, got %lu bytes with alignment %lu\n", debug, (unsigned long int)expected_size, (unsigned long int)expected_align, (unsigned long int)result, (unsigned long int)align);
 		failed++;
@@ -48,6 +73,8 @@ void test_get_mem_arr(const char *spec, const char *debug, size_t dim, size_t ex
 
 int main()
 {
+	set_error_file(stderr);
+
 	fail_get_mem(DEBUG_SPEC(""));
 	fail_get_mem(DEBUG_SPEC("\x40"));
 	fail_get_mem(DEBUG_SPEC("\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"));

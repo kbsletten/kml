@@ -4,6 +4,19 @@
 
 #include "mem.h"
 
+#ifdef DEBUG
+
+#include <stdio.h>
+static
+FILE *error_file = NULL;
+
+void set_error_file(FILE *file)
+{
+	error_file = file;
+}
+
+#endif
+
 static
 struct mem_info {
 	size_t size;
@@ -53,6 +66,9 @@ struct field_info get_array_size(const char **current, va_list *args)
 	size_t index_size = get_field_type_size(advance(current));
 
 	if (!index_size) {
+#ifdef DEBUG
+		fprintf(error_file, "Error: index_size is zero in get_array_size\n");
+#endif
 		return field_zero;
 	}
 
@@ -76,6 +92,9 @@ struct field_info get_field_size(const char **current, va_list *args)
 			field.count += advance(current) & 0x7F;
 
 			if (field.count > SIZE_MAX >> 7) {
+#ifdef DEBUG
+				fprintf(error_file, "Error: field.count overflow in get_field_size\n");
+#endif
 				return field_zero;
 			}
 
@@ -85,6 +104,9 @@ struct field_info get_field_size(const char **current, va_list *args)
 		field.count += advance(current);
 
 		if (!field.count) {
+#ifdef DEBUG
+			fprintf(error_file, "Error: field.count is zero in get_field_size\n");
+#endif
 			return field_zero;
 		}
 	}
@@ -96,18 +118,27 @@ struct field_info get_field_size(const char **current, va_list *args)
 
 		case SPEC_TYPE_STR:
 			if (get_field_type_size(field_type)) {
+#ifdef DEBUG
+				fprintf(error_file, "Error: get_field_type_size(field_type) nonzero for SPEC_TYPE_STR in get_field_size\n");
+#endif
 				return field_zero;
 			}
 
 			field.mem = get_spec_size(current, args);
 
 			if (advance(current)) {
+#ifdef DEBUG
+				fprintf(error_file, "Error: advance(current) nonzero for SPEC_TYPE_STR in get_field_size\n");
+#endif
 				return field_zero;
 			}
 			break;
 
 		case SPEC_TYPE_ARR:
 			if (field.count > 1) {
+#ifdef DEBUG
+				fprintf(error_file, "Error: field.count > 1 for SPEC_TYPE_ARR in get_field_size\n");
+#endif
 				return field_zero;
 			}
 
@@ -116,6 +147,9 @@ struct field_info get_field_size(const char **current, va_list *args)
 
 		case SPEC_TYPE_PTR:
 			if ((field_type & SPEC_SIZE) != SPEC_SIZE_PTR) {
+#ifdef DEBUG
+				fprintf(error_file, "Error: SPEC_TYPE_PTR but not SPEC_SIZE_PTR in get_field_size\n");
+#endif
 				return field_zero;
 			}
 
@@ -123,10 +157,16 @@ struct field_info get_field_size(const char **current, va_list *args)
 			break;
 
 		default:
+#ifdef DEBUG
+			fprintf(error_file, "Error: Unknown SPEC_TYPE in get_field_size\n");
+#endif
 			return field_zero;
 	}
 
 	if (!field.mem.size) {
+#ifdef DEBUG
+		fprintf(error_file, "Error: field.mem.size is zero in get_field_size\n");
+#endif
 		return field_zero;
 	}
 
@@ -143,6 +183,9 @@ struct mem_info get_spec_size(const char **current, va_list *args)
 		field = get_field_size(current, args);
 
 		if (!field.mem.size) {
+#ifdef DEBUG
+			fprintf(error_file, "Error: field.mem.size is zero in get_spec_size\n");
+#endif
 			return mem_zero;
 		}
 
