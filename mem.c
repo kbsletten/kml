@@ -142,6 +142,10 @@ struct mem_info get_spec_size(const char **current, va_list *args)
 	while (**current) {
 		field = get_field_size(current, args);
 
+		if (!field.mem.size) {
+			return mem_zero;
+		}
+
 		mem.size = round_up(mem.size, field.mem.align);
 	       	mem.size += field.mem.size * field.count;
 		mem.size += (round_up(field.mem.size, field.mem.align) - field.mem.size) * (field.count - 1);
