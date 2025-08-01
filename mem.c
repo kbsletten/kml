@@ -117,9 +117,9 @@ struct field_info get_field_size(const char **current, va_list *args)
 			break;
 
 		case SPEC_TYPE_STR:
-			if (get_field_type_size(field_type)) {
+			if (field_type & SPEC_SIZE) {
 #ifdef DEBUG
-				fprintf(error_file, "Error: get_field_type_size(field_type) nonzero for SPEC_TYPE_STR in get_field_size\n");
+				fprintf(error_file, "Error: field_type & SPEC_SIZE for SPEC_TYPE_STR in get_field_size\n");
 #endif
 				return field_zero;
 			}
