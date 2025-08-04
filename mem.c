@@ -239,11 +239,66 @@ struct mem_info get_spec_size(struct arrays_info *arrays, const char **current, 
 	return mem;
 }
 
+void set_array_length(void **ptr, size_t size, size_t length)
+{
+	size_t ptr_value = (size_t)*ptr;
+	unsigned char *char_ptr;
+	unsigned short int *short_ptr;
+	unsigned int *int_ptr;
+#if SIZE_MAX != UINT_MAX
+	size_t *size_ptr;
+#endif
+#if ULONG_MAX != UINT_MAX && ULONG_MAX != SIZE_MAX
+	unsigned long int *long_ptr;
+#endif
+	ptr_value = round_up(ptr_value, size);
+	switch (size) {
+		case sizeof(unsigned char):
+			char_ptr = (unsigned char *)(void *)ptr_value;
+			*char_ptr = length;
+			ptr_value = (size_t)(char_ptr + 1);
+			break;
+		case sizeof(unsigned short int):
+			short_ptr = (unsigned short int *)(void *)ptr_value;
+			*short_ptr = length;
+			ptr_value = (size_t)(short_ptr + 1);
+			break;
+		case sizeof(unsigned int):
+			int_ptr = (unsigned int *)(void *)ptr_value;
+			*int_ptr = length;
+			ptr_value = (size_t)(int_ptr + 1);
+			break;
+#if SIZE_MAX != UINT_MAX
+		case sizeof(size_t):
+			size_ptr = (size_t *)(void *)ptr_value;
+			*size_ptr = length;
+			ptr_value = (size_t)(size_ptr + 1);
+			break;
+#endif
+#if ULONG_MAX != UINT_MAX && ULONG_MAX != SIZE_MAX
+		case sizeof(unsigned long int):
+			long_ptr = (unsigned long int *)(void *)ptr_value;
+			*long_ptr = length;
+			ptr_value = (size_t)(long_ptr + 1);
+			break;
+#endif
+
+		default:
+#ifdef DEBUG
+			if (error_file) {
+				fprintf(error_file, "Error: Unsupported size in set_array_length\n");
+			}
+#endif
+			break;
+	}
+}
+
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 {
 	const char *current = spec;
 	struct mem_info mem, length = mem_zero;
 	struct arrays_info arrays = arrays_zero;
+	void *length_ptr;
 	va_list args;
 	unsigned int i;
 
@@ -271,6 +326,11 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 	}
 
 	*ptr = malloc(mem.size);
+
+	length_ptr = *ptr;
+	for (i = 0; i < arrays.count; i++) {
+		set_array_length(&length_ptr, arrays.arrays[i].size, arrays.arrays[i].length);
+	}
 
 	if (align_ptr) {
 		*align_ptr = mem.align;
