@@ -4,3 +4,6 @@ obj
 *.s
 *.exe
 test
+*.gcda
+*.gcno
+*.gcov

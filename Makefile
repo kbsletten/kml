@@ -1,5 +1,5 @@
 CFLAGS=-ansi -pedantic -Wall -Wextra
-DFLAGS=-Og -DDEBUG -ggdb
+DFLAGS=-Og -DDEBUG -ggdb --coverage
 PFLAGS=-O2
 SFLAGS=-fverbose-asm
 LFLAGS=
