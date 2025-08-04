@@ -254,6 +254,7 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 	va_end(args);
 
 	if (!mem.size) {
+		*ptr = NULL;
 		return 0;
 	}
 
