@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include "mem.h"
 
@@ -51,6 +52,9 @@ struct field_info get_field_size(struct arrays_info *arrays, const char **curren
 static
 size_t round_up(size_t value, size_t alignment)
 {
+	/* alignment must be a power of two */
+	assert((alignment & (alignment - 1)) == 0);
+
 	return (value + alignment - 1) & ~(alignment - 1);
 }
 
@@ -74,7 +78,13 @@ size_t get_field_type_size(char field_type)
 
 static
 size_t max_value(size_t size) {
-	return (1 << (size * 8)) - 1;
+	size_t size_one = 1;
+
+	/* size must be a power of two */
+	assert((size & (size - 1)) == 0);
+	assert(size <= sizeof(size_t));
+
+	return size == sizeof(size_t) ? SIZE_MAX : (size_one << (size * 8)) - 1;
 }
 
 static
@@ -241,7 +251,7 @@ struct mem_info get_spec_size(struct arrays_info *arrays, const char **current, 
 
 void set_array_length(void **ptr, size_t size, size_t length)
 {
-	size_t ptr_value = (size_t)*ptr;
+	size_t ptr_value;
 	unsigned char *char_ptr;
 	unsigned short int *short_ptr;
 	unsigned int *int_ptr;
@@ -251,7 +261,10 @@ void set_array_length(void **ptr, size_t size, size_t length)
 #if ULONG_MAX != UINT_MAX && ULONG_MAX != SIZE_MAX
 	unsigned long int *long_ptr;
 #endif
-	ptr_value = round_up(ptr_value, size);
+
+	assert(sizeof (size_t) == sizeof (void *));
+	ptr_value = round_up((size_t)*ptr, size);
+
 	switch (size) {
 		case sizeof(unsigned char):
 			char_ptr = (unsigned char *)(void *)ptr_value;
@@ -291,6 +304,7 @@ void set_array_length(void **ptr, size_t size, size_t length)
 #endif
 			break;
 	}
+	*ptr = (void *)ptr_value;
 }
 
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
