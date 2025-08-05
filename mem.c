@@ -264,6 +264,7 @@ struct mem_info get_spec_size(struct arrays_info *arrays, const char **current, 
 	return mem;
 }
 
+static
 void set_array_length(void **ptr, size_t size, size_t length)
 {
 	size_t ptr_value;
@@ -335,6 +336,7 @@ struct gc_block {
 static
 struct gc_block *root;
 
+static
 void *advance_pointer(void **ptr, size_t size, size_t align)
 {
 	size_t value = round_up((size_t)*ptr, align);
@@ -343,16 +345,17 @@ void *advance_pointer(void **ptr, size_t size, size_t align)
 	return result;
 }
 
-void *align_pointer(void *ptr, size_t align)
-{
-	return (void *)round_up((size_t)ptr, align);	
-}
+#ifdef TRACE_GC
 
+static
 size_t ptr_diff(void *lhs, void *rhs)
 {
 	return (size_t)lhs - (size_t)rhs;
 }
 
+#endif
+
+static
 void *find_free(const char *spec, size_t size, size_t align)
 {
 	struct gc_block **current = &root;
