@@ -73,7 +73,10 @@ void test_get_mem_arr(const char *spec, const char *debug, size_t dim, size_t ex
 
 int main()
 {
+	FILE *trace_file = fopen("gc_trace.txt", "w+");
+
 	set_error_file(stderr);
+	set_trace_file(trace_file);
 
 	fail_get_mem(DEBUG_SPEC(""));
 	fail_get_mem(DEBUG_SPEC("\x40"));

@@ -7,3 +7,4 @@ test
 *.gcda
 *.gcno
 *.gcov
+gc_trace.txt

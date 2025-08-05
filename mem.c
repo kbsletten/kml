@@ -8,6 +8,7 @@
 #ifdef DEBUG
 
 #include <stdio.h>
+
 static
 FILE *error_file = NULL;
 
@@ -16,6 +17,20 @@ void set_error_file(FILE *file)
 	error_file = file;
 }
 
+#ifdef TRACE_GC
+static
+FILE *trace_file = NULL;
+
+void set_trace_file(FILE *file)
+{
+	trace_file = file;
+}
+#endif
+
+#endif
+
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
 #endif
 
 static
@@ -307,6 +322,114 @@ void set_array_length(void **ptr, size_t size, size_t length)
 	*ptr = (void *)ptr_value;
 }
 
+struct object_header {
+	const char *spec;
+	struct object_header *next;
+};
+
+struct gc_block {
+	struct gc_block *next;
+	struct object_header *free;
+};
+
+static
+struct gc_block *root;
+
+void *advance_pointer(void **ptr, size_t size, size_t align)
+{
+	size_t value = round_up((size_t)*ptr, align);
+	void *result = (void *)value;
+	*ptr = (void *)(value + size);
+	return result;
+}
+
+void *align_pointer(void *ptr, size_t align)
+{
+	return (void *)round_up((size_t)ptr, align);	
+}
+
+size_t ptr_diff(void *lhs, void *rhs)
+{
+	return (size_t)lhs - (size_t)rhs;
+}
+
+void *find_free(const char *spec, size_t size, size_t align)
+{
+	struct gc_block **current = &root;
+	struct object_header *header = NULL, *next = NULL;
+	void *ptr, *result = NULL;
+	size_t alloc_size;
+
+#ifdef TRACE_GC
+	size_t free_space;
+	fprintf(trace_file, "find_free(%lu, %lu)\n", (unsigned long int)size, (unsigned long int)align);
+#endif
+
+	for (current = &root; *current; current = &(*current)->next)
+	{
+		ptr = (*current)->free;
+
+#ifdef TRACE_GC
+		alloc_size = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
+		fprintf(trace_file, "Block (free space: %lu)\n", (unsigned long int)alloc_size);
+#endif
+
+		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+		result = advance_pointer(&ptr, size, align);
+		next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+
+		if (ptr > (void *)header->next)
+		{
+			continue;
+		}
+
+		next->spec = NULL;
+		next->next = header->next;
+		header->spec = spec;
+		header->next = next;
+		(*current)->free = next;
+
+#ifdef TRACE_GC
+		free_space = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
+		fprintf(trace_file, "Allocated object (used: %lu, free space: %lu).\n", (unsigned long int)(alloc_size - free_space), (unsigned long int)free_space);
+#endif
+
+		return result;
+	}
+
+	assert(!*current);
+
+	alloc_size = round_up(size + sizeof(struct gc_block) + sizeof(struct object_header), PAGE_SIZE);
+
+	/* TODO: replace with mmap or equivalent to get exact pages */
+	ptr = malloc(alloc_size);
+
+	if (!ptr)
+	{
+#ifdef DEBUG
+		fprintf(error_file, "Unable to acquire memory page.");
+#endif
+		return NULL;
+	}
+
+	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(void *));
+	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+	header->spec = spec;
+	result = advance_pointer(&ptr, size, align);
+	next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+	header->next = next;
+	next->spec = NULL;
+	next->next = (struct object_header *)((char *)*current + alloc_size);
+	(*current)->free = &*next;
+
+#ifdef TRACE_GC
+	free_space = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
+	fprintf(trace_file, "Allocated block (used: %lu, free space: %lu).\n", (unsigned long int)(alloc_size - free_space), (unsigned long int)free_space);
+#endif
+
+	return result;
+}
+
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 {
 	const char *current = spec;
@@ -339,7 +462,7 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 		mem.align = length.align;
 	}
 
-	*ptr = malloc(mem.size);
+	*ptr = find_free(spec, mem.size, mem.align);
 
 	length_ptr = *ptr;
 	for (i = 0; i < arrays.count; i++) {

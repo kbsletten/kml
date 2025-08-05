@@ -2,6 +2,8 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#else
+#undef TRACE_GC
 #endif
 
 #define SPEC_END        0x00 /* 00000000 */
@@ -68,5 +70,11 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...);
 #ifdef DEBUG
 
 void set_error_file(FILE *file);
+
+#ifdef TRACE_GC
+
+void set_trace_file(FILE *file);
+
+#endif
 
 #endif
