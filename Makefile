@@ -6,7 +6,7 @@ LFLAGS=
 
 .PHONY: all clean
 
-all: test.exe debug/mem.s obj/mem.s
+all: test.exe stress.exe debug/mem.s obj/mem.s
 
 clean:
 	rm -f test.exe debug/* obj/*
@@ -25,3 +25,6 @@ obj/%.s: %.c %.h
 
 test.exe: debug/mem.o mem.h test.c
 	$(CC) test.c debug/mem.o -o test $(CFLAGS) $(DFLAGS) $(LFLAGS)
+
+stress.exe: debug/mem.o mem.h stress.c
+	$(CC) stress.c debug/mem.o -o stress $(CFLAGS) $(DFLAGS) $(LFLAGS)

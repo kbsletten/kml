@@ -515,6 +515,10 @@ void safe_point()
 	struct gc_block *current = gc_root;
 	size_t alloc_size, free_size;
 
+#ifdef TRACE_GC
+	fprintf(trace_file, "safe_point()\n");
+#endif
+
 	while (current)
 	{
 		alloc_size = ptr_diff(current->free->next, current);
