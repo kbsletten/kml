@@ -4,6 +4,7 @@ obj
 *.s
 *.exe
 test
+stress
 *.gcda
 *.gcno
 *.gcov

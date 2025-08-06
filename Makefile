@@ -9,18 +9,22 @@ LFLAGS=
 all: test.exe stress.exe debug/mem.s obj/mem.s
 
 clean:
-	rm -f test.exe debug/* obj/*
+	rm -f test test.exe stress stress.exe *.gcda *.gcno *gc_trace.txt debug/* obj/*
 
 debug/%.o: %.c %.h
+	mkdir -p debug/
 	$(CC) -c $< -o $@ $(CFLAGS) $(DFLAGS)
 
 debug/%.s: %.c %.h
+	mkdir -p debug/
 	$(CC) -S $< -o $@ $(CFLAGS) $(DFLAGS) $(SFLAGS)
 
 obj/%.o: %.c %.h
+	mkdir -p obj/
 	$(CC) -c $< -o $@ $(CFLAGS) $(PFLAGS)
 
 obj/%.s: %.c %.h
+	mkdir -p obj/
 	$(CC) -S $< -o $@ $(CFLAGS) $(PFLAGS) $(SFLAGS)
 
 test.exe: debug/mem.o mem.h test.c
