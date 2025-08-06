@@ -63,9 +63,30 @@
 #define SPEC_MULT       0x80 /* 10000000 */
 
 /*
-	`spec` is null-terminated string that describes the memory layout.
-*/
+ * `spec` is a string that describes the memory layout.
+ */
 size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...);
+
+struct pin_block
+{
+	struct pin_block *next, *prev;
+	void *pin;
+};
+
+/*
+ * pin the specified pointer as a gc root
+ */
+void pin_mem(struct pin_block *pin);
+
+/*
+ * remove the specified pointer
+ */
+void unpin_mem(struct pin_block *pin);
+
+/*
+ * Check to see if there is work to be done on the gc
+ */
+void safe_point();
 
 #ifdef DEBUG
 

@@ -334,7 +334,10 @@ struct gc_block {
 };
 
 static
-struct gc_block *root;
+struct gc_block *gc_root;
+
+static
+struct pin_block *pin_root;
 
 static
 void *advance_pointer(void **ptr, size_t size, size_t align)
@@ -345,20 +348,16 @@ void *advance_pointer(void **ptr, size_t size, size_t align)
 	return result;
 }
 
-#ifdef TRACE_GC
-
 static
 size_t ptr_diff(void *lhs, void *rhs)
 {
 	return (size_t)lhs - (size_t)rhs;
 }
 
-#endif
-
 static
 void *find_free(const char *spec, size_t size, size_t align)
 {
-	struct gc_block **current = &root;
+	struct gc_block **current = &gc_root;
 	struct object_header *header = NULL, *next = NULL;
 	void *ptr, *result = NULL;
 	size_t alloc_size;
@@ -368,7 +367,7 @@ void *find_free(const char *spec, size_t size, size_t align)
 	fprintf(trace_file, "find_free(%lu, %lu)\n", (unsigned long int)size, (unsigned long int)align);
 #endif
 
-	for (current = &root; *current; current = &(*current)->next)
+	for (current = &gc_root; *current; current = &(*current)->next)
 	{
 		ptr = (*current)->free;
 
@@ -377,9 +376,9 @@ void *find_free(const char *spec, size_t size, size_t align)
 		fprintf(trace_file, "Block (free space: %lu)\n", (unsigned long int)alloc_size);
 #endif
 
-		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
 		result = advance_pointer(&ptr, size, align);
-		next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+		next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
 
 		if (ptr > (void *)header->next)
 		{
@@ -415,11 +414,11 @@ void *find_free(const char *spec, size_t size, size_t align)
 		return NULL;
 	}
 
-	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(void *));
-	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(struct gc_block));
+	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
 	header->spec = spec;
 	result = advance_pointer(&ptr, size, align);
-	next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+	next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
 	header->next = next;
 	next->spec = NULL;
 	next->next = (struct object_header *)((char *)*current + alloc_size);
@@ -477,4 +476,58 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 	}
 
 	return mem.size;
+}
+
+void pin_mem(struct pin_block *pin)
+{
+	if (pin_root)
+	{
+		pin->next = pin_root;
+		pin->prev = pin_root->prev;
+		pin_root->prev->next = pin;
+		pin_root->prev = pin;
+	}
+	else
+	{
+		pin_root = pin;
+		pin->next = pin;
+		pin->prev = pin;
+	}
+}
+
+void unpin_mem(struct pin_block *pin)
+{
+	if (pin->next == pin)
+	{
+		assert(pin->prev == pin);
+		assert(pin_root == pin);
+		pin_root = NULL;
+	}
+	else
+	{
+		pin->next->prev = pin->prev;
+		pin->prev->next = pin->next;
+	}
+}
+
+void safe_point()
+{
+	struct gc_block *current = gc_root;
+	size_t alloc_size, free_size;
+
+	while (current)
+	{
+		alloc_size = ptr_diff(current->free->next, current);
+		free_size = ptr_diff(current->free->next, current->free) - sizeof(struct object_header);
+#ifdef TRACE_GC
+		fprintf(trace_file, "Block (size: %lu, free space: %lu)\n", (unsigned long int)alloc_size, (unsigned long int)free_size);
+#endif
+
+		if (free_size < alloc_size / 2)
+		{
+			/* TODO: mark-and-sweep */
+		}
+
+		current = current->next;
+	}
 }
