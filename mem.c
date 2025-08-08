@@ -337,7 +337,7 @@ static
 struct gc_block *gc_root;
 
 static
-struct pin_block *pin_root;
+struct pin_block pin_root = { &pin_root, &pin_root, NULL };
 
 static
 void *advance_pointer(void **ptr, size_t size, size_t align)
@@ -480,33 +480,87 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 
 void pin_mem(struct pin_block *pin)
 {
-	if (pin_root)
-	{
-		pin->next = pin_root;
-		pin->prev = pin_root->prev;
-		pin_root->prev->next = pin;
-		pin_root->prev = pin;
-	}
-	else
-	{
-		pin_root = pin;
-		pin->next = pin;
-		pin->prev = pin;
-	}
+	pin->next = &pin_root;
+	pin->prev = pin_root.prev;
+	pin_root.prev->next = pin;
+	pin_root.prev = pin;
 }
 
 void unpin_mem(struct pin_block *pin)
 {
-	if (pin->next == pin)
+	pin->next->prev = pin->prev;
+	pin->prev->next = pin->next;
+}
+
+#ifdef TRACE_GC
+
+const char *hex_codes = "0123456789ABCDEF";
+
+static
+void print_hex(FILE *file, void *ptr, size_t size)
+{
+	unsigned short int test = 0x1234;
+	unsigned char *tptr = (void *)&test, *cptr = ptr;
+	size_t i;
+	char leading_zero = 1;
+
+	fprintf(file, "0x");
+
+	if (tptr[0] == 0x12)
 	{
-		assert(pin->prev == pin);
-		assert(pin_root == pin);
-		pin_root = NULL;
+		for (i = 0; i < size; i++)
+		{
+			if (leading_zero && cptr[i] == 0) continue;
+
+			if (!leading_zero || cptr[i] & 0xF0)
+			{
+				fprintf(file, "%c", hex_codes[(cptr[i] & 0xF0) >> 4]);
+			}
+			fprintf(file, "%c", hex_codes[cptr[i] & 0x0F]);
+			leading_zero = 0;
+		}
+	} else {
+		for (i = size - 1; i != SIZE_MAX; i--)
+		{
+			if (leading_zero && cptr[i] == 0) continue;
+
+			if (!leading_zero || cptr[i] & 0xF0)
+			{
+				fprintf(file, "%c", hex_codes[(cptr[i] & 0xF0) >> 4]);
+			}
+			fprintf(file, "%c", hex_codes[cptr[i] & 0x0F]);
+			leading_zero = 0;
+		}
 	}
-	else
+
+	if (leading_zero)
 	{
-		pin->next->prev = pin->prev;
-		pin->prev->next = pin->next;
+		fprintf(file, "0");
+	}
+}
+
+#endif
+
+static
+void gcmark()
+{
+	struct pin_block *pin = pin_root.next;
+
+#ifdef TRACE_GC
+	fprintf(trace_file, "gcmark()\n");
+#endif
+
+	while (pin != &pin_root)
+	{
+#ifdef TRACE_GC
+		fprintf(trace_file, "pin ");
+		print_hex(trace_file, pin, sizeof (struct pin *));
+		fprintf(trace_file, " ");
+		print_hex(trace_file, pin->pin, sizeof (void *));
+		fprintf(trace_file, "\n");
+#endif
+
+		pin = pin->next;
 	}
 }
 
@@ -524,12 +578,16 @@ void safe_point()
 		alloc_size = ptr_diff(current->free->next, current);
 		free_size = ptr_diff(current->free->next, current->free) - sizeof(struct object_header);
 #ifdef TRACE_GC
-		fprintf(trace_file, "Block (size: %lu, free space: %lu)\n", (unsigned long int)alloc_size, (unsigned long int)free_size);
+		fprintf(trace_file, "Block (size: ");
+		print_hex(trace_file, &alloc_size, sizeof(size_t));
+		fprintf(trace_file, ", free space: ");
+		print_hex(trace_file, &free_size, sizeof(size_t));
+		fprintf(trace_file, ")\n");
 #endif
 
 		if (free_size < alloc_size / 2)
 		{
-			/* TODO: mark-and-sweep */
+			gcmark();
 		}
 
 		current = current->next;
