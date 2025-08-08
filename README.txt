@@ -26,11 +26,11 @@ following layout:
 
  C - the field alignment, the following values are supported:
 
-     000 - a byte-aligned field (e.g. char, bool)
-     001 - a two-byte aligned field (e.g. wchar_t, short int)
-     010 - a four-byte aligned field (e.g. long int, float)
-     011 - an eight-byte aligned field (e.g. double)
-     111 - a pointer-aligned field (e.g. void *, size_t)
+     0000 - a byte-aligned field (e.g. char, bool)
+     0001 - a two-byte aligned field (e.g. wchar_t, short int)
+     0010 - a four-byte aligned field (e.g. long int, float)
+     0011 - an eight-byte aligned field (e.g. double)
+     1111 - a pointer-aligned field (e.g. void *, size_t)
 
 Multiple Flag
 
