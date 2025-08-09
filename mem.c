@@ -18,6 +18,11 @@ void set_error_file(FILE *file)
 }
 
 #ifdef TRACE_GC
+
+#include <string.h>
+
+#define MEM_DBG 0xA5
+
 static
 FILE *trace_file = NULL;
 
@@ -460,7 +465,11 @@ void *find_free(const char *spec, size_t size, size_t align)
 	alloc_size = round_up(size + sizeof(struct gc_block) + sizeof(struct object_header), PAGE_SIZE);
 
 	/* TODO: replace with mmap or equivalent to get exact pages */
+#ifdef TRACE_GC
+	ptr = malloc(alloc_size + 128);
+#else
 	ptr = malloc(alloc_size);
+#endif
 
 	if (!ptr)
 	{
@@ -469,6 +478,11 @@ void *find_free(const char *spec, size_t size, size_t align)
 #endif
 		return NULL;
 	}
+
+#ifdef TRACE_GC
+	memset(ptr, MEM_DBG, alloc_size + 128);
+	advance_pointer(&ptr, 64, 64);
+#endif
 
 	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(struct gc_block));
 	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
@@ -584,6 +598,7 @@ void safe_point()
 	size_t alloc_size, free_size;
 
 #ifdef TRACE_GC
+	unsigned char *chk, *end, count = 0;
 	fprintf(trace_file, "safe_point()\n");
 #endif
 
@@ -592,11 +607,42 @@ void safe_point()
 		alloc_size = ptr_diff(current->free->next, current);
 		free_size = ptr_diff(current->free->next, current->free) - sizeof(struct object_header);
 #ifdef TRACE_GC
-		fprintf(trace_file, "Block (size: ");
+		fprintf(trace_file, "Block ");
+		print_hex(trace_file, current, sizeof(void *));
+		fprintf(trace_file, " (size: ");
 		print_hex(trace_file, &alloc_size, sizeof(size_t));
 		fprintf(trace_file, ", free space: ");
 		print_hex(trace_file, &free_size, sizeof(size_t));
 		fprintf(trace_file, ")\n");
+
+		chk = (void *)current;
+		end = (void *)current->free->next;
+
+		for (chk -= 64, end += 64; chk < end; chk += 2)
+		{
+			if (chk[0] == MEM_DBG && chk[1] == MEM_DBG)
+			{
+				fputc('#', trace_file);
+			}
+			else if (chk[0] == MEM_DBG)
+			{
+				fputc('/', trace_file);
+			}
+			else if (chk[1] == MEM_DBG)
+			{
+				fputc('\\', trace_file);
+			}
+			else
+			{
+				fputc(' ', trace_file);
+			}
+			if (++count == 32)
+			{
+				fputc('\n', trace_file);
+				count = 0;
+			}
+		}
+		fputc('\n', trace_file);
 #endif
 
 		if (free_size < alloc_size / 2)

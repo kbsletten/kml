@@ -31,12 +31,15 @@ struct list_cons *cons(struct list_cons *car, int cdr)
 int main()
 {
 	struct pin_block pin = { NULL, NULL, NULL };
-	FILE *trace_file = fopen("stress_gc_trace.txt", "w+");
 	int i, ex_sum = 0, list_sum = 0;
 	struct list_cons *list = NULL;
 
+#ifdef DEBUG
+	FILE *trace_file = fopen("stress_gc_trace.txt", "w+");
+
 	set_error_file(stderr);
 	set_trace_file(trace_file);
+#endif
 
 	printf("Stress test 1000 iterations.\n");
 
@@ -59,7 +62,9 @@ int main()
 
 	unpin_mem(&pin);
 
+#ifdef DEBUG
 	fclose(trace_file);
+#endif
 
 	return 0;
 }

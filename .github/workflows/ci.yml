@@ -16,4 +16,4 @@ jobs:
     - name: make
       run: make
     - name: test
-      run: ./test
+      run: bin/test

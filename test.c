@@ -11,6 +11,8 @@ static
 void fail_get_mem(const char *spec, const char *debug) {
 	void *ptr = NULL;
 	size_t result, align = 0;
+
+#ifdef DEBUG
 #ifdef _WIN32
 	FILE *null_file = fopen("NUL", "w");
 #else
@@ -22,14 +24,17 @@ void fail_get_mem(const char *spec, const char *debug) {
 	} else {
 		set_error_file(stderr);
 	}
+#endif
 	
 	result = get_mem(spec, &ptr, &align);
 	
+#ifdef DEBUG
 	if (null_file) {
 		fflush(stderr);
 		fclose(null_file);
 		set_error_file(stderr);
 	}
+#endif
 
 	if (result || ptr || align) {
 		fprintf(stderr, "get_mem(%s) failed: expected error, got %lu bytes with alignment %lu\n", debug, (unsigned long int)result, (unsigned long int)align);
@@ -73,10 +78,12 @@ void test_get_mem_arr(const char *spec, const char *debug, size_t dim, size_t ex
 
 int main()
 {
-	FILE *trace_file = fopen("gc_trace.txt", "w+");
+#ifdef DEBUG
+	FILE *trace_file = fopen("test_gc_trace.txt", "w+");
 
 	set_error_file(stderr);
 	set_trace_file(trace_file);
+#endif
 
 	fail_get_mem(DEBUG_SPEC(""));
 	fail_get_mem(DEBUG_SPEC("\x40"));
@@ -107,7 +114,11 @@ int main()
 
 	fprintf(stdout, "%lu of %lu tests passed.\n", passed, passed + failed);
 
+	safe_point();
+
+#ifdef DEBUG
 	fclose(trace_file);
+#endif
 
 	return failed;
 }
