@@ -107,5 +107,7 @@ int main()
 
 	fprintf(stdout, "%lu of %lu tests passed.\n", passed, passed + failed);
 
+	fclose(trace_file);
+
 	return failed;
 }

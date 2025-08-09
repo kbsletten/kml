@@ -25,6 +25,52 @@ void set_trace_file(FILE *file)
 {
 	trace_file = file;
 }
+
+const char *hex_codes = "0123456789ABCDEF";
+
+static
+void print_hex(FILE *file, void *ptr, size_t size)
+{
+	unsigned short int test = 0x1234;
+	unsigned char *tptr = (void *)&test, *cptr = ptr;
+	size_t i;
+	char leading_zero = 1;
+
+	fprintf(file, "0x");
+
+	if (tptr[0] == 0x12)
+	{
+		for (i = 0; i < size; i++)
+		{
+			if (leading_zero && cptr[i] == 0) continue;
+
+			if (!leading_zero || cptr[i] & 0xF0)
+			{
+				fprintf(file, "%c", hex_codes[(cptr[i] & 0xF0) >> 4]);
+			}
+			fprintf(file, "%c", hex_codes[cptr[i] & 0x0F]);
+			leading_zero = 0;
+		}
+	} else {
+		for (i = size - 1; i != SIZE_MAX; i--)
+		{
+			if (leading_zero && cptr[i] == 0) continue;
+
+			if (!leading_zero || cptr[i] & 0xF0)
+			{
+				fprintf(file, "%c", hex_codes[(cptr[i] & 0xF0) >> 4]);
+			}
+			fprintf(file, "%c", hex_codes[cptr[i] & 0x0F]);
+			leading_zero = 0;
+		}
+	}
+
+	if (leading_zero)
+	{
+		fprintf(file, "0");
+	}
+}
+
 #endif
 
 #endif
@@ -363,8 +409,11 @@ void *find_free(const char *spec, size_t size, size_t align)
 	size_t alloc_size;
 
 #ifdef TRACE_GC
-	size_t free_space;
-	fprintf(trace_file, "find_free(%lu, %lu)\n", (unsigned long int)size, (unsigned long int)align);
+	fprintf(trace_file, "find_free(");
+	print_hex(trace_file, &size, sizeof(size_t));
+	fprintf(trace_file, ", ");
+	print_hex(trace_file, &align, sizeof(size_t));
+	fprintf(trace_file, ")\n");
 #endif
 
 	for (current = &gc_root; *current; current = &(*current)->next)
@@ -373,7 +422,12 @@ void *find_free(const char *spec, size_t size, size_t align)
 
 #ifdef TRACE_GC
 		alloc_size = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
-		fprintf(trace_file, "Block (free space: %lu)\n", (unsigned long int)alloc_size);
+		fprintf(trace_file, "Block (free: ");
+		print_hex(trace_file, &(*current)->free, sizeof(void *));
+		fprintf(trace_file, ", end: ");
+		print_hex(trace_file, &(*current)->free->next, sizeof(void *));
+		fprintf(trace_file, ")\n");
+		fflush(trace_file);
 #endif
 
 		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
@@ -392,8 +446,10 @@ void *find_free(const char *spec, size_t size, size_t align)
 		(*current)->free = next;
 
 #ifdef TRACE_GC
-		free_space = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
-		fprintf(trace_file, "Allocated object (used: %lu, free space: %lu).\n", (unsigned long int)(alloc_size - free_space), (unsigned long int)free_space);
+		fprintf(trace_file, "Allocated object ");
+		print_hex(trace_file, &result, sizeof(void *));
+		fprintf(trace_file, "\n");
+		fflush(trace_file);
 #endif
 
 		return result;
@@ -423,10 +479,17 @@ void *find_free(const char *spec, size_t size, size_t align)
 	next->spec = NULL;
 	next->next = (struct object_header *)((char *)*current + alloc_size);
 	(*current)->free = &*next;
+	(*current)->next = NULL;
 
 #ifdef TRACE_GC
-	free_space = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
-	fprintf(trace_file, "Allocated block (used: %lu, free space: %lu).\n", (unsigned long int)(alloc_size - free_space), (unsigned long int)free_space);
+	fprintf(trace_file, "Allocated block ");
+	print_hex(trace_file, current, sizeof(void *));
+	fprintf(trace_file, "\n");
+	
+	fprintf(trace_file, "Allocated object ");
+	print_hex(trace_file, &result, sizeof(void *));
+	fprintf(trace_file, "\n");
+	fflush(trace_file);
 #endif
 
 	return result;
@@ -491,55 +554,6 @@ void unpin_mem(struct pin_block *pin)
 	pin->next->prev = pin->prev;
 	pin->prev->next = pin->next;
 }
-
-#ifdef TRACE_GC
-
-const char *hex_codes = "0123456789ABCDEF";
-
-static
-void print_hex(FILE *file, void *ptr, size_t size)
-{
-	unsigned short int test = 0x1234;
-	unsigned char *tptr = (void *)&test, *cptr = ptr;
-	size_t i;
-	char leading_zero = 1;
-
-	fprintf(file, "0x");
-
-	if (tptr[0] == 0x12)
-	{
-		for (i = 0; i < size; i++)
-		{
-			if (leading_zero && cptr[i] == 0) continue;
-
-			if (!leading_zero || cptr[i] & 0xF0)
-			{
-				fprintf(file, "%c", hex_codes[(cptr[i] & 0xF0) >> 4]);
-			}
-			fprintf(file, "%c", hex_codes[cptr[i] & 0x0F]);
-			leading_zero = 0;
-		}
-	} else {
-		for (i = size - 1; i != SIZE_MAX; i--)
-		{
-			if (leading_zero && cptr[i] == 0) continue;
-
-			if (!leading_zero || cptr[i] & 0xF0)
-			{
-				fprintf(file, "%c", hex_codes[(cptr[i] & 0xF0) >> 4]);
-			}
-			fprintf(file, "%c", hex_codes[cptr[i] & 0x0F]);
-			leading_zero = 0;
-		}
-	}
-
-	if (leading_zero)
-	{
-		fprintf(file, "0");
-	}
-}
-
-#endif
 
 static
 void gcmark()

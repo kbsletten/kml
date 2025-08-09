@@ -32,21 +32,34 @@ int main()
 {
 	struct pin_block pin = { NULL, NULL, NULL };
 	FILE *trace_file = fopen("stress_gc_trace.txt", "w+");
-	int i;
+	int i, ex_sum = 0, list_sum = 0;
+	struct list_cons *list = NULL;
 
 	set_error_file(stderr);
 	set_trace_file(trace_file);
+
+	printf("Stress test 1000 iterations.\n");
 
 	pin_mem(&pin);
 
 	for (i = 0; i < 1000; i++)
 	{
 		pin.pin = cons(pin.pin, i);
+		ex_sum += i;
 	}
 
 	safe_point();
 
+	for (list = pin.pin; list; list = list->tail)
+	{
+		list_sum += list->value;
+	}
+
+	printf("Expected sum: %d, List sum: %d\n", ex_sum, list_sum);
+
 	unpin_mem(&pin);
+
+	fclose(trace_file);
 
 	return 0;
 }
