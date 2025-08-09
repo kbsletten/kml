@@ -28,6 +28,9 @@ struct list_cons *cons(struct list_cons *car, int cdr)
 	return result;
 }
 
+static
+unsigned long int passed = 0, failed = 0;
+
 int main()
 {
 	struct pin_block pin = { NULL, NULL, NULL };
@@ -40,8 +43,6 @@ int main()
 	set_error_file(stderr);
 	set_trace_file(trace_file);
 #endif
-
-	printf("Stress test 1000 iterations.\n");
 
 	pin_mem(&pin);
 
@@ -58,7 +59,12 @@ int main()
 		list_sum += list->value;
 	}
 
-	printf("Expected sum: %d, List sum: %d\n", ex_sum, list_sum);
+	if (ex_sum == list_sum) {
+		passed++;
+	} else {
+		failed++;
+		printf("Expected sum: %d, List sum: %d\n", ex_sum, list_sum);
+	}
 
 	unpin_mem(&pin);
 
@@ -66,5 +72,7 @@ int main()
 	fclose(trace_file);
 #endif
 
-	return 0;
+	fprintf(stdout, "%lu of %lu tests passed.\n", passed, passed + failed);
+
+	return failed;
 }

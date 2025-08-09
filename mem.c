@@ -382,6 +382,9 @@ struct object_header {
 struct gc_block {
 	struct gc_block *next;
 	struct object_header *free;
+#ifdef TRACE_GC
+	void *end;
+#endif
 };
 
 static
@@ -426,18 +429,18 @@ void *find_free(const char *spec, size_t size, size_t align)
 		ptr = (*current)->free;
 
 #ifdef TRACE_GC
-		alloc_size = ptr_diff((*current)->free->next, (*current)->free) - sizeof(struct object_header);
+		alloc_size = ptr_diff((*current)->end, (*current)->free) - sizeof(struct object_header);
 		fprintf(trace_file, "Block (free: ");
 		print_hex(trace_file, &(*current)->free, sizeof(void *));
 		fprintf(trace_file, ", end: ");
-		print_hex(trace_file, &(*current)->free->next, sizeof(void *));
+		print_hex(trace_file, &(*current)->end, sizeof(void *));
 		fprintf(trace_file, ")\n");
 		fflush(trace_file);
 #endif
 
-		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
+		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 		result = advance_pointer(&ptr, size, align);
-		next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
+		next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 
 		if (ptr > (void *)header->next)
 		{
@@ -481,14 +484,29 @@ void *find_free(const char *spec, size_t size, size_t align)
 
 #ifdef TRACE_GC
 	memset(ptr, MEM_DBG, alloc_size + 128);
-	advance_pointer(&ptr, 64, 64);
+	advance_pointer(&ptr, 64, 8);
 #endif
 
-	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(struct gc_block));
-	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
+	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(void *));
+
+#ifdef TRACE_GC
+
+	(*current)->end = (char *)ptr + alloc_size;
+
+#endif
+
+	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 	header->spec = spec;
 	result = advance_pointer(&ptr, size, align);
-	next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(struct object_header));
+	next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
+
+#ifdef TRACE_GC
+	if (ptr > (*current)->end) {
+		fprintf(trace_file, "Allocater overran end of block.\n");
+		exit(-1);
+	}
+#endif
+
 	header->next = next;
 	next->spec = NULL;
 	next->next = (struct object_header *)((char *)*current + alloc_size);
@@ -634,7 +652,7 @@ void safe_point()
 			}
 			else
 			{
-				fputc(' ', trace_file);
+				fputc('*', trace_file);
 			}
 			if (++count == 32)
 			{

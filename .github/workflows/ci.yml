@@ -17,3 +17,5 @@ jobs:
       run: make
     - name: test
       run: bin/test
+    - name: stress
+      run: bin/stress
