@@ -1,40 +1,34 @@
 CFLAGS=-ansi -pedantic -Wall -Wextra
-DFLAGS=-Og -DDEBUG -DTRACE_GC -ggdb --coverage -fsanitize=undefined
-PFLAGS=-O2
 SFLAGS=-fverbose-asm
 LFLAGS=
 
+MODE=bin
+ARCH=86-64
+
 .PHONY: all clean
 
-all: bin/test.exe bin/stress.exe debug/test.exe debug/stress.exe debug/mem.s bin/mem.s
+all: $(MODE)/$(ARCH)/test $(MODE)/$(ARCH)/stress
 
 clean:
-	rm -f test test.exe stress stress.exe *.gcda *.gcno *gc_trace.txt debug/* bin/*
+	rm -rf debug/ bin/
+	rm -f *.gcda *.gcno *gc_trace.txt
 
-debug/%.o: %.c %.h
-	mkdir -p debug/
+ifeq ($MODE,bin)
+CFLAGS+= -O2
+endif
+
+ifeq ($MODE,debug)
+CFLAGS+= -Og -DDEBUG -DTRACE_GC -ggdb --coverage -fsanitize=undefined
+endif
+
+
+$(MODE)/$(ARCH)/%.o: %.c %.h
+	mkdir -p $(MODE)/$(ARCH)
 	$(CC) -c $< -o $@ $(CFLAGS) $(DFLAGS)
 
-debug/%.s: %.c %.h
-	mkdir -p debug/
-	$(CC) -S $< -o $@ $(CFLAGS) $(DFLAGS) $(SFLAGS)
+$(MODE)/$(ARCH)/test: $(MODE)/$(ARCH)/mem.o mem.h test.c
+	$(CC) test.c $(MODE)/$(ARCH)/mem.o -o $(MODE)/$(ARCH)/test $(CFLAGS) $(LFLAGS)
 
-bin/%.o: %.c %.h
-	mkdir -p bin/
-	$(CC) -c $< -o $@ $(CFLAGS) $(PFLAGS)
+$(MODE)/$(ARCH)/stress: $(MODE)/$(ARCH)/mem.o mem.h stress.c
+	$(CC) stress.c $(MODE)/$(ARCH)/mem.o -o $(MODE)/$(ARCH)/stress $(CFLAGS) $(LFLAGS)
 
-bin/%.s: %.c %.h
-	mkdir -p bin/
-	$(CC) -S $< -o $@ $(CFLAGS) $(PFLAGS) $(SFLAGS)
-
-debug/test.exe: debug/mem.o mem.h test.c
-	$(CC) test.c debug/mem.o -o debug/test $(CFLAGS) $(DFLAGS) $(LFLAGS)
-
-debug/stress.exe: debug/mem.o mem.h stress.c
-	$(CC) stress.c debug/mem.o -o debug/stress $(CFLAGS) $(DFLAGS) $(LFLAGS)
-
-bin/test.exe: bin/mem.o mem.h test.c
-	$(CC) test.c bin/mem.o -o bin/test $(CFLAGS) $(PFLAGS) $(LFLAGS)
-
-bin/stress.exe: bin/mem.o mem.h stress.c
-	$(CC) stress.c bin/mem.o -o bin/stress $(CFLAGS) $(PFLAGS) $(LFLAGS)

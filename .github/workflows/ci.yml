@@ -16,6 +16,6 @@ jobs:
     - name: make
       run: make
     - name: test
-      run: bin/test
+      run: bin/86-64/test
     - name: stress
-      run: bin/stress
+      run: bin/86-64/stress
