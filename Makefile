@@ -13,12 +13,12 @@ clean:
 	rm -rf debug/ bin/
 	rm -f *.gcda *.gcno *gc_trace.txt
 
-ifeq ($MODE,bin)
-CFLAGS+= -O2
+ifeq ($(MODE),bin)
+CFLAGS+=-O2
 endif
 
-ifeq ($MODE,debug)
-CFLAGS+= -Og -DDEBUG -DTRACE_GC -ggdb --coverage -fsanitize=undefined
+ifeq ($(MODE),debug)
+CFLAGS+=-Og -DDEBUG -DTRACE_GC -ggdb --coverage -fsanitize=undefined
 endif
 
 

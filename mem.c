@@ -469,7 +469,7 @@ void *find_free(const char *spec, size_t size, size_t align)
 
 	/* TODO: replace with mmap or equivalent to get exact pages */
 #ifdef TRACE_GC
-	ptr = malloc(alloc_size + 128);
+	ptr = malloc(alloc_size + 256);
 #else
 	ptr = malloc(alloc_size);
 #endif
@@ -483,8 +483,8 @@ void *find_free(const char *spec, size_t size, size_t align)
 	}
 
 #ifdef TRACE_GC
-	memset(ptr, MEM_DBG, alloc_size + 128);
-	advance_pointer(&ptr, 64, 8);
+	memset(ptr, MEM_DBG, alloc_size + 256);
+	advance_pointer(&ptr, 128, 8);
 #endif
 
 	*current = advance_pointer(&ptr, sizeof(struct gc_block), sizeof(void *));
@@ -636,7 +636,7 @@ void safe_point()
 		chk = (void *)current;
 		end = (void *)current->free->next;
 
-		for (chk -= 64, end += 64; chk < end; chk += 2)
+		for (chk -= 128, end += 128; chk < end; chk += 2)
 		{
 			if (chk[0] == MEM_DBG && chk[1] == MEM_DBG)
 			{
@@ -654,7 +654,7 @@ void safe_point()
 			{
 				fputc('*', trace_file);
 			}
-			if (++count == 32)
+			if (++count == 64)
 			{
 				fputc('\n', trace_file);
 				count = 0;
