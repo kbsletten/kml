@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stddef.h>
 
 #ifdef DEBUG
@@ -47,6 +48,22 @@
 	The shape of the array items is defined by the following byte.
 */
 #define SPEC_TYPE_ARR   0x30 /* 00110000 */
+
+typedef unsigned char U8;
+typedef signed char I8;
+typedef unsigned short int U16;
+typedef short int I16;
+typedef unsigned int U32;
+typedef signed int I32;
+#if SIZE_MAX > UINT_MAX
+#define INT_64
+typedef size_t U64;
+typedef ptrdiff_t I64;
+#elif ULONG_MAX > UINT_MAX
+#define INT_64
+typedef unsigned long int U64;
+typedef long int I64;
+#endif
 
 /*
 	Pointer value.

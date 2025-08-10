@@ -21,6 +21,9 @@ ifeq ($(MODE),debug)
 CFLAGS+=-Og -DDEBUG -DTRACE_GC -ggdb --coverage -fsanitize=undefined
 endif
 
+ifeq ($(ARCH),86)
+CFLAGS+=-m32
+endif
 
 $(MODE)/$(ARCH)/%.o: %.c %.h
 	mkdir -p $(MODE)/$(ARCH)

@@ -319,47 +319,37 @@ static
 void set_array_length(void **ptr, size_t size, size_t length)
 {
 	size_t ptr_value;
-	unsigned char *char_ptr;
-	unsigned short int *short_ptr;
-	unsigned int *int_ptr;
-#if SIZE_MAX != UINT_MAX
-	size_t *size_ptr;
-#endif
-#if ULONG_MAX != UINT_MAX && ULONG_MAX != SIZE_MAX
-	unsigned long int *long_ptr;
+	U8 *ptr8;
+	U16 *ptr16;
+	U32 *ptr32;
+#ifdef INT_64
+	U64 *ptr64;
 #endif
 
 	assert(sizeof (size_t) == sizeof (void *));
 	ptr_value = round_up((size_t)*ptr, size);
 
 	switch (size) {
-		case sizeof(unsigned char):
-			char_ptr = (unsigned char *)(void *)ptr_value;
-			*char_ptr = length;
-			ptr_value = (size_t)(char_ptr + 1);
+		case sizeof(U8):
+			ptr8 = (U8 *)(void *)ptr_value;
+			*ptr8 = length;
+			ptr_value = (size_t)(ptr8 + 1);
 			break;
-		case sizeof(unsigned short int):
-			short_ptr = (unsigned short int *)(void *)ptr_value;
-			*short_ptr = length;
-			ptr_value = (size_t)(short_ptr + 1);
+		case sizeof(U16):
+			ptr16 = (U16 *)(void *)ptr_value;
+			*ptr16 = length;
+			ptr_value = (size_t)(ptr16 + 1);
 			break;
-		case sizeof(unsigned int):
-			int_ptr = (unsigned int *)(void *)ptr_value;
-			*int_ptr = length;
-			ptr_value = (size_t)(int_ptr + 1);
+		case sizeof(U32):
+			ptr32 = (U32 *)(void *)ptr_value;
+			*ptr32 = length;
+			ptr_value = (size_t)(ptr32 + 1);
 			break;
-#if SIZE_MAX != UINT_MAX
-		case sizeof(size_t):
-			size_ptr = (size_t *)(void *)ptr_value;
-			*size_ptr = length;
-			ptr_value = (size_t)(size_ptr + 1);
-			break;
-#endif
-#if ULONG_MAX != UINT_MAX && ULONG_MAX != SIZE_MAX
-		case sizeof(unsigned long int):
-			long_ptr = (unsigned long int *)(void *)ptr_value;
-			*long_ptr = length;
-			ptr_value = (size_t)(long_ptr + 1);
+#ifdef INT_64
+		case sizeof(U64):
+			ptr64 = (U64 *)(void *)ptr_value;
+			*ptr64 = length;
+			ptr_value = (size_t)(ptr64 + 1);
 			break;
 #endif
 

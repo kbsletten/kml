@@ -5,13 +5,13 @@
 
 struct list_cons {
 	struct list_cons *tail;
-	int value;
+	I32 value;
 };
 
 static
-const char *list_cons_spec = "\x7F\x13";
+const char *list_cons_spec = "\x7F\x12";
 
-struct list_cons *cons(struct list_cons *car, int cdr)
+struct list_cons *cons(struct list_cons *car, I32 cdr)
 {
 	struct list_cons *result;
 	void *ptr = car;
@@ -19,7 +19,11 @@ struct list_cons *cons(struct list_cons *car, int cdr)
 
        	size = get_mem(list_cons_spec, &ptr, NULL);
 
-	assert(size == sizeof(struct list_cons));
+	if (size != sizeof(struct list_cons))
+	{
+		fprintf(stderr, "Expected %lu, got %lu.\n", (unsigned long int)sizeof(struct list_cons), (unsigned long int)size);
+		assert(size == sizeof(struct list_cons));
+	}
 
 	result = ptr;
 	result->tail = car;
@@ -34,7 +38,7 @@ unsigned long int passed = 0, failed = 0;
 int main()
 {
 	struct pin_block pin = { NULL, NULL, NULL };
-	int i, ex_sum = 0, list_sum = 0;
+	I32 i, ex_sum = 0, list_sum = 0;
 	struct list_cons *list = NULL;
 
 #ifdef DEBUG
