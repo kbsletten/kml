@@ -305,12 +305,13 @@ struct mem_info get_spec_size(struct arrays_info *arrays, const char **current, 
 		}
 
 		mem.size = round_up(mem.size, field.mem.align);
-	       	mem.size += field.mem.size * field.count;
-		mem.size += (round_up(field.mem.size, field.mem.align) - field.mem.size) * (field.count - 1);
+		mem.size += round_up(field.mem.size, field.mem.align) * field.count;
 		if (field.mem.align > mem.align) {
 			mem.align = field.mem.align;
 		}
 	}
+
+	mem.size = round_up(mem.size, mem.align);
 
 	return mem;
 }

@@ -98,12 +98,13 @@ int main()
 	test_get_mem(DEBUG_SPEC("\x90\x03" "\x11"), 6, 2);
 	test_get_mem(DEBUG_SPEC("\xFF\x03"), (unsigned int)(3 * sizeof(void *)), (unsigned int)(sizeof(void *)));
 	test_get_mem(DEBUG_SPEC(
-		"\xA0\x02" /* 7 + 1 + 7 = 15 */
+		"\xA0\x02"
 			"\x91\x02" /* A: 2x2 = 4 */
 			"\x90\x03" /* B: 1x3 = 3 */
-			"\x00" /* 7 */
+			"\x00" /* 7 ~> 8 */
+		/* 8 * 2 = 16 */
 		"\x10" /* C: 1 */
-		/* 16 */), 16, 2);
+		/* 17 ~> 18 */), 18, 2);
 	/* AAaaBbB_AAaaBbB_c_ */
 	/* internal fragmentation 3/18 = 17% */
 
