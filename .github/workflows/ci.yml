@@ -14,28 +14,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        arch: ["86", "86-64"]
 
     steps:
     - uses: actions/checkout@v4
     - name: make
-      run: make
+      run: make ARCH=${{ matrix.arch }}
     - name: test
       run: bin/86-64/test
     - name: stress
       run: bin/86-64/stress
 
-  build-win:
-
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install Make with Chocolatey
-      shell: powershell
-      run: choco install make
-    - name: make
-      run: make
-    - name: test
-      run: bin/86-64/test
-    - name: stress
-      run: bin/86-64/stress
