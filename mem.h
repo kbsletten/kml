@@ -103,7 +103,7 @@ void unpin_mem(struct pin_block *pin);
 /*
  * Check to see if there is work to be done on the gc
  */
-void safe_point();
+void safe_point(void);
 
 #ifdef DEBUG
 

@@ -579,7 +579,7 @@ void unpin_mem(struct pin_block *pin)
 }
 
 static
-void gcmark()
+void gcmark(void)
 {
 	struct pin_block *pin = pin_root.next;
 
@@ -601,7 +601,7 @@ void gcmark()
 	}
 }
 
-void safe_point()
+void safe_point(void)
 {
 	struct gc_block *current = gc_root;
 	size_t alloc_size, free_size;

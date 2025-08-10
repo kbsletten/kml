@@ -35,7 +35,7 @@ struct list_cons *cons(struct list_cons *car, I32 cdr)
 static
 unsigned long int passed = 0, failed = 0;
 
-int main()
+int main(void)
 {
 	struct pin_block pin = { NULL, NULL, NULL };
 	I32 i, ex_sum = 0, list_sum = 0;

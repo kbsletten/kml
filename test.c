@@ -76,7 +76,7 @@ void test_get_mem_arr(const char *spec, const char *debug, size_t dim, size_t ex
 	}
 }
 
-int main()
+int main(void)
 {
 #ifdef DEBUG
 	FILE *trace_file = fopen("test_gc_trace.txt", "w+");
