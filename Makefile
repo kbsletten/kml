@@ -14,7 +14,7 @@ clean:
 	rm -f *.gcda *.gcno *gc_trace.txt
 
 ifeq ($(MODE),bin)
-CFLAGS+=-O2 -DNDEBUG
+CFLAGS+=-flto -O2 -DNDEBUG
 endif
 
 ifeq ($(MODE),debug)

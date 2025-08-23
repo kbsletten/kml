@@ -104,19 +104,7 @@ typedef struct {
 	U64 interior_ptr;
 } interior_ptr_t;
 
-static
-interior_ptr_t _internal_mk_ptr(U64 base_ptr, U64 offset) {
-	interior_ptr_t ptr;
-
-#ifndef NDEBUG
-	assert(offset <= LMASK(INTERIOR_BITS));
-#endif
-
-	ptr.interior_ptr = (base_ptr & LMASK(BASE_BITS)) | (offset << BASE_BITS);
-	return ptr;
-}
-
-#define MK_PTR(b, o) _internal_mk_ptr((U64)b, (U64)o)
+#define MK_PTR(b, o) mk_ptr((U64)b, (U64)o)
 #define BASE_PTR(p) VOID_PTR((p).interior_ptr & LMASK(BASE_BITS))
 #define MEM_PTR(p) VOID_PTR( \
 	((p).interior_ptr & LMASK(BASE_BITS)) \
@@ -134,19 +122,13 @@ typedef struct {
 	U32 offset;
 } interior_ptr_t;
 
-static
-interior_ptr_t _internal_mk_ptr(U32 base_ptr, U32 offset) {
-	interior_ptr_t ptr;
-	ptr.base_ptr = base_ptr;
-	ptr.offset = offset;
-	return ptr;
-}
-
-#define MK_PTR(b, o) _internal_mk_ptr((U32)b, (U32)o)
+#define MK_PTR(b, o) mk_ptr((U32)b, (U32)o)
 #define BASE_PTR(p) VOID_PTR((p).base_ptr)
 #define MEM_PTR(p) VOID_PTR((p).base_ptr + (p).offset)
 
 #endif
+
+interior_ptr_t mk_ptr(U64 base_ptr, U64 mem_ptr);
 
 /*
 	Pointer value.

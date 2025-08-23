@@ -84,6 +84,30 @@ void print_hex(FILE *file, void *ptr, size_t size)
 #define PAGE_SIZE 4096
 #endif
 
+#if PTR_BITS == 64
+
+interior_ptr_t mk_ptr(U64 base_ptr, U64 mem_ptr) {
+	interior_ptr_t ptr;
+
+#ifndef NDEBUG
+	assert(offset <= LMASK(INTERIOR_BITS));
+#endif
+
+	ptr.interior_ptr = (base_ptr & LMASK(BASE_BITS)) | ((mem_ptr - base_ptr) << BASE_BITS);
+	return ptr;
+}
+
+#elif PTR_BITS == 32
+
+interior_ptr_t mk_ptr(U32 base_ptr, U32 mem_ptr) {
+	interior_ptr_t ptr;
+	ptr.base_ptr = base_ptr;
+	ptr.offset = mem_ptr - base_ptr;
+	return ptr;
+}
+
+#endif
+
 static
 struct mem_info {
 	size_t size;
@@ -522,7 +546,7 @@ size_t get_mem(const char *spec, interior_ptr_t *ptr, size_t *align_ptr, ...)
 	const char *current = spec;
 	struct mem_info mem, length = mem_zero;
 	struct arrays_info arrays = arrays_zero;
-	void *length_ptr;
+	void *start_ptr;
 	va_list args;
 	unsigned int i;
 
@@ -533,7 +557,7 @@ size_t get_mem(const char *spec, interior_ptr_t *ptr, size_t *align_ptr, ...)
 	va_end(args);
 
 	if (!mem.size) {
-		*ptr = MK_PTR(NULL, 0);
+		*ptr = MK_PTR(NULL, NULL);
 		return 0;
 	}
 
@@ -549,11 +573,11 @@ size_t get_mem(const char *spec, interior_ptr_t *ptr, size_t *align_ptr, ...)
 		mem.align = length.align;
 	}
 
-	*ptr = MK_PTR(find_free(spec, mem.size, mem.align), 0);
+	start_ptr = find_free(spec, mem.size, mem.align);
 
-	length_ptr = MEM_PTR(*ptr);
+	*ptr = MK_PTR(start_ptr, start_ptr);
 	for (i = 0; i < arrays.count; i++) {
-		set_array_length(&length_ptr, arrays.arrays[i].size, arrays.arrays[i].length);
+		set_array_length(&start_ptr, arrays.arrays[i].size, arrays.arrays[i].length);
 	}
 
 	if (align_ptr) {
