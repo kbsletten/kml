@@ -136,7 +136,7 @@ static
 size_t get_field_type_size(char field_type)
 {
 	if ((field_type & SPEC_SIZE) == SPEC_SIZE_PTR) {
-		return sizeof(void *);
+		return PTR_SIZE;
 	} else {
 		return 1 << (field_type & SPEC_SIZE);
 	}
@@ -144,13 +144,11 @@ size_t get_field_type_size(char field_type)
 
 static
 size_t max_value(size_t size) {
-	size_t size_one = 1;
-
 	/* size must be a power of two */
 	assert((size & (size - 1)) == 0);
 	assert(size <= sizeof(size_t));
 
-	return size == sizeof(size_t) ? SIZE_MAX : (size_one << (size * 8)) - 1;
+	return size == sizeof(size_t) ? SIZE_MAX : (SZ_ONE << (size * 8)) - 1;
 }
 
 static
@@ -268,7 +266,8 @@ struct field_info get_field_size(struct arrays_info *arrays, const char **curren
 				return field_zero;
 			}
 
-			field.mem.align = field.mem.size = sizeof(void *);
+			field.mem.align = PTR_SIZE;
+			field.mem.size = sizeof(interior_ptr_t);
 			break;
 
 		default:
@@ -382,7 +381,7 @@ static
 struct gc_block *gc_root;
 
 static
-struct pin_block pin_root = { &pin_root, &pin_root, NULL };
+struct pin_block pin_root = { &pin_root, &pin_root, { 0 } };
 
 static
 void *advance_pointer(void **ptr, size_t size, size_t align)
@@ -518,7 +517,7 @@ void *find_free(const char *spec, size_t size, size_t align)
 	return result;
 }
 
-size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
+size_t get_mem(const char *spec, interior_ptr_t *ptr, size_t *align_ptr, ...)
 {
 	const char *current = spec;
 	struct mem_info mem, length = mem_zero;
@@ -534,7 +533,7 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 	va_end(args);
 
 	if (!mem.size) {
-		*ptr = NULL;
+		*ptr = MK_PTR(NULL, 0);
 		return 0;
 	}
 
@@ -550,9 +549,9 @@ size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...)
 		mem.align = length.align;
 	}
 
-	*ptr = find_free(spec, mem.size, mem.align);
+	*ptr = MK_PTR(find_free(spec, mem.size, mem.align), 0);
 
-	length_ptr = *ptr;
+	length_ptr = MEM_PTR(*ptr);
 	for (i = 0; i < arrays.count; i++) {
 		set_array_length(&length_ptr, arrays.arrays[i].size, arrays.arrays[i].length);
 	}
@@ -593,7 +592,7 @@ void gcmark(void)
 		fprintf(trace_file, "pin ");
 		print_hex(trace_file, pin, sizeof (struct pin *));
 		fprintf(trace_file, " ");
-		print_hex(trace_file, pin->pin, sizeof (void *));
+		print_hex(trace_file, MEM_PTR(pin->pin), sizeof (void *));
 		fprintf(trace_file, "\n");
 #endif
 

@@ -1,6 +1,10 @@
 #include <limits.h>
 #include <stddef.h>
 
+#ifndef NDEBUG
+#include <assert.h>
+#endif
+
 #ifdef DEBUG
 #include <stdio.h>
 #else
@@ -55,14 +59,93 @@ typedef unsigned short int U16;
 typedef short int I16;
 typedef unsigned int U32;
 typedef signed int I32;
+
 #if SIZE_MAX > UINT_MAX
+
 #define INT_64
 typedef size_t U64;
 typedef ptrdiff_t I64;
+
 #elif ULONG_MAX > UINT_MAX
+
 #define INT_64
 typedef unsigned long int U64;
 typedef long int I64;
+
+#endif
+
+#define VOID_PTR(x) ((void *)(x))
+#define SZ_ONE ((size_t)1)
+#define LMASK(x) ((SZ_ONE << x) - 1)
+
+#ifndef PTR_BITS
+#ifdef INT_64
+#define PTR_BITS 64
+#else
+#define PTR_BITS 32
+#endif
+#endif
+
+#define PTR_SIZE (PTR_BITS / 8)
+
+#if PTR_BITS == 64
+
+#ifndef INTERIOR_BITS
+#define INTERIOR_BITS 16
+#endif
+
+#define BASE_BITS (PTR_BITS - INTERIOR_BITS)
+
+typedef struct {
+	U64 base_ptr;
+} base_ptr_t;
+
+typedef struct {
+	U64 interior_ptr;
+} interior_ptr_t;
+
+static
+interior_ptr_t _internal_mk_ptr(U64 base_ptr, U64 offset) {
+	interior_ptr_t ptr;
+
+#ifndef NDEBUG
+	assert(offset <= LMASK(INTERIOR_BITS));
+#endif
+
+	ptr.interior_ptr = (base_ptr & LMASK(BASE_BITS)) | (offset << BASE_BITS);
+	return ptr;
+}
+
+#define MK_PTR(b, o) _internal_mk_ptr((U64)b, (U64)o)
+#define BASE_PTR(p) VOID_PTR((p).interior_ptr & LMASK(BASE_BITS))
+#define MEM_PTR(p) VOID_PTR( \
+	((p).interior_ptr & LMASK(BASE_BITS)) \
+	+ (((p).interior_ptr & ~LMASK(BASE_BITS)) >> BASE_BITS) \
+)
+
+#elif PTR_BITS == 32
+
+typedef struct {
+	U32 base_ptr;
+} base_ptr_t;
+
+typedef struct {
+	U32 base_ptr;
+	U32 offset;
+} interior_ptr_t;
+
+static
+interior_ptr_t _internal_mk_ptr(U32 base_ptr, U32 offset) {
+	interior_ptr_t ptr;
+	ptr.base_ptr = base_ptr;
+	ptr.offset = offset;
+	return ptr;
+}
+
+#define MK_PTR(b, o) _internal_mk_ptr((U32)b, (U32)o)
+#define BASE_PTR(p) VOID_PTR((p).base_ptr)
+#define MEM_PTR(p) VOID_PTR((p).base_ptr + (p).offset)
+
 #endif
 
 /*
@@ -82,12 +165,12 @@ typedef long int I64;
 /*
  * `spec` is a string that describes the memory layout.
  */
-size_t get_mem(const char *spec, void **ptr, size_t *align_ptr, ...);
+size_t get_mem(const char *spec, interior_ptr_t *ptr, size_t *align_ptr, ...);
 
 struct pin_block
 {
 	struct pin_block *next, *prev;
-	void *pin;
+	interior_ptr_t pin;
 };
 
 /*

@@ -9,7 +9,7 @@ unsigned long int passed = 0, failed = 0;
 
 static
 void fail_get_mem(const char *spec, const char *debug) {
-	void *ptr = NULL;
+	interior_ptr_t ptr;
 	size_t result, align = 0;
 
 #ifdef DEBUG
@@ -36,7 +36,7 @@ void fail_get_mem(const char *spec, const char *debug) {
 	}
 #endif
 
-	if (result || ptr || align) {
+	if (result || MEM_PTR(ptr) || align) {
 		fprintf(stderr, "get_mem(%s) failed: expected error, got %lu bytes with alignment %lu\n", debug, (unsigned long int)result, (unsigned long int)align);
 		failed++;
 	} else {
@@ -46,13 +46,13 @@ void fail_get_mem(const char *spec, const char *debug) {
 
 static
 void test_get_mem(const char *spec, const char *debug, size_t expected_size, size_t expected_align) {
-	void *ptr = NULL;
+	interior_ptr_t ptr;
 	size_t align = 0;
 	size_t result;
 	
 	result = get_mem(spec, &ptr, &align);
 
-	if (result != expected_size || !ptr || align != expected_align) {
+	if (result != expected_size || !MEM_PTR(ptr) || align != expected_align) {
 		fprintf(stderr, "get_mem(%s) failed: expected %lu bytes with alignment %lu, got %lu bytes with alignment %lu\n", debug, (unsigned long int)expected_size, (unsigned long int)expected_align, (unsigned long int)result, (unsigned long int)align);
 		failed++;
 	} else {
@@ -62,13 +62,13 @@ void test_get_mem(const char *spec, const char *debug, size_t expected_size, siz
 
 static
 void test_get_mem_arr(const char *spec, const char *debug, size_t dim, size_t expected_size, size_t expected_align) {
-	void *ptr = NULL;
+	interior_ptr_t ptr;
 	size_t align = 0;
 	size_t result;
 	
 	result = get_mem(spec, &ptr, &align, dim);
 
-	if (result != expected_size || !ptr || align != expected_align) {
+	if (result != expected_size || !MEM_PTR(ptr) || align != expected_align) {
 		fprintf(stderr, "get_mem(%s) failed: expected %lu bytes with alignment %lu, got %lu bytes with alignment %lu\n", debug, (unsigned long int)expected_size, (unsigned long int)expected_align, (unsigned long int)result, (unsigned long int)align);
 		failed++;
 	} else {

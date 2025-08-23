@@ -4,20 +4,20 @@
 #include "mem.h"
 
 struct list_cons {
-	struct list_cons *tail;
+	interior_ptr_t tail;
 	I32 value;
 };
 
 static
 const char *list_cons_spec = "\x7F\x12";
 
-struct list_cons *cons(struct list_cons *car, I32 cdr)
+interior_ptr_t cons(interior_ptr_t car, I32 cdr)
 {
-	struct list_cons *result;
-	void *ptr = car;
+	interior_ptr_t ptr;
+	struct list_cons *list;
 	size_t size;
 
-       	size = get_mem(list_cons_spec, &ptr, NULL);
+	size = get_mem(list_cons_spec, &ptr, NULL);
 
 	if (size != sizeof(struct list_cons))
 	{
@@ -25,11 +25,11 @@ struct list_cons *cons(struct list_cons *car, I32 cdr)
 		assert(size == sizeof(struct list_cons));
 	}
 
-	result = ptr;
-	result->tail = car;
-	result->value = cdr;
+	list = MEM_PTR(ptr);
+	list->tail = car;
+	list->value = cdr;
 
-	return result;
+	return ptr;
 }
 
 static
@@ -37,7 +37,7 @@ unsigned long int passed = 0, failed = 0;
 
 int main(void)
 {
-	struct pin_block pin = { NULL, NULL, NULL };
+	struct pin_block pin = { 0 };
 	I32 i, ex_sum = 0, list_sum = 0;
 	struct list_cons *list = NULL;
 
@@ -58,7 +58,7 @@ int main(void)
 
 	safe_point();
 
-	for (list = pin.pin; list; list = list->tail)
+	for (list = MEM_PTR(pin.pin); list; list = MEM_PTR(list->tail))
 	{
 		list_sum += list->value;
 	}
