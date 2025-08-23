@@ -86,25 +86,32 @@ void print_hex(FILE *file, void *ptr, size_t size)
 
 #if PTR_BITS == 64
 
+static
 interior_ptr_t mk_ptr(U64 base_ptr, U64 mem_ptr) {
 	interior_ptr_t ptr;
+	size_t offset = mem_ptr - base_ptr;
 
 #ifndef NDEBUG
 	assert(offset <= LMASK(INTERIOR_BITS));
 #endif
 
-	ptr.interior_ptr = (base_ptr & LMASK(BASE_BITS)) | ((mem_ptr - base_ptr) << BASE_BITS);
+	ptr.interior_ptr = (base_ptr & LMASK(BASE_BITS)) | (offset << BASE_BITS);
 	return ptr;
 }
 
+#define MK_PTR(b, o) mk_ptr((U64)b, (U64)o)
+
 #elif PTR_BITS == 32
 
+static
 interior_ptr_t mk_ptr(U32 base_ptr, U32 mem_ptr) {
 	interior_ptr_t ptr;
 	ptr.base_ptr = base_ptr;
 	ptr.offset = mem_ptr - base_ptr;
 	return ptr;
 }
+
+#define MK_PTR(b, o) mk_ptr((U32)b, (U32)o)
 
 #endif
 
@@ -557,7 +564,7 @@ size_t get_mem(const char *spec, interior_ptr_t *ptr, size_t *align_ptr, ...)
 	va_end(args);
 
 	if (!mem.size) {
-		*ptr = MK_PTR(NULL, NULL);
+		*ptr = MK_PTR(0, 0);
 		return 0;
 	}
 
