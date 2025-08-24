@@ -44,12 +44,10 @@ typedef long int I64;
 
 #define BASE_BITS (PTR_BITS - INTERIOR_BITS)
 
-typedef struct {
-	U64 base_ptr;
-} base_ptr_t;
+typedef U64 ptr_t;
 
 typedef struct {
-	U64 interior_ptr;
+	ptr_t interior_ptr;
 } interior_ptr_t;
 
 #define BASE_PTR(p) VOID_PTR((p).interior_ptr & LMASK(BASE_BITS))
@@ -60,13 +58,11 @@ typedef struct {
 
 #elif PTR_BITS == 32
 
-typedef struct {
-	U32 base_ptr;
-} base_ptr_t;
+typedef U32 ptr_t;
 
 typedef struct {
-	U32 base_ptr;
-	U32 offset;
+	ptr_t base_ptr;
+	ptr_t offset;
 } interior_ptr_t;
 
 #define BASE_PTR(p) VOID_PTR((p).base_ptr)

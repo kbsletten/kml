@@ -90,7 +90,7 @@ void print_hex(FILE *file, void *ptr, size_t size)
 static
 interior_ptr_t mk_ptr(U64 base_ptr, U64 mem_ptr) {
 	interior_ptr_t ptr;
-	size_t offset = mem_ptr - base_ptr;
+	U64 offset = mem_ptr - base_ptr;
 
 #ifndef NDEBUG
 	assert(offset <= LMASK(INTERIOR_BITS));
@@ -377,6 +377,7 @@ void set_array_length(void **ptr, size_t size, size_t length)
 			*ptr32 = length;
 			ptr_value = (size_t)(ptr32 + 1);
 			break;
+
 #ifdef INT_64
 		case sizeof(U64):
 			ptr64 = (U64 *)(void *)ptr_value;
@@ -398,15 +399,11 @@ void set_array_length(void **ptr, size_t size, size_t length)
 
 struct object_header {
 	const char *spec;
-	struct object_header *next;
 };
 
 struct gc_block {
 	struct gc_block *next;
-	struct object_header *free;
-#ifdef TRACE_GC
-	void *end;
-#endif
+	void *free, *end;
 };
 
 static
@@ -434,7 +431,7 @@ static
 void *find_free(const char *spec, size_t size, size_t align)
 {
 	struct gc_block **current = &gc_root;
-	struct object_header *header = NULL, *next = NULL;
+	struct object_header *header = NULL;
 	void *ptr, *result = NULL;
 	size_t alloc_size;
 
@@ -462,18 +459,14 @@ void *find_free(const char *spec, size_t size, size_t align)
 
 		header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 		result = advance_pointer(&ptr, size, align);
-		next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 
-		if (ptr > (void *)header->next)
+		if (ptr > (*current)->end)
 		{
 			continue;
 		}
 
-		next->spec = NULL;
-		next->next = header->next;
 		header->spec = spec;
-		header->next = next;
-		(*current)->free = next;
+		(*current)->free = ptr;
 
 #ifdef TRACE_GC
 		fprintf(trace_file, "Allocated object ");
@@ -520,7 +513,6 @@ void *find_free(const char *spec, size_t size, size_t align)
 	header = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 	header->spec = spec;
 	result = advance_pointer(&ptr, size, align);
-	next = advance_pointer(&ptr, sizeof(struct object_header), sizeof(void *));
 
 #ifdef TRACE_GC
 	if (ptr > (*current)->end) {
@@ -529,10 +521,7 @@ void *find_free(const char *spec, size_t size, size_t align)
 	}
 #endif
 
-	header->next = next;
-	next->spec = NULL;
-	next->next = (struct object_header *)((char *)*current + alloc_size);
-	(*current)->free = &*next;
+	(*current)->free = ptr;
 	(*current)->next = NULL;
 
 #ifdef TRACE_GC
@@ -644,8 +633,8 @@ void safe_point(void)
 
 	while (current)
 	{
-		alloc_size = ptr_diff(current->free->next, current);
-		free_size = ptr_diff(current->free->next, current->free) - sizeof(struct object_header);
+		alloc_size = ptr_diff(current->end, current);
+		free_size = ptr_diff(current->end, current->free) - sizeof(struct object_header);
 #ifdef TRACE_GC
 		fprintf(trace_file, "Block ");
 		print_hex(trace_file, current, sizeof(void *));
@@ -656,7 +645,7 @@ void safe_point(void)
 		fprintf(trace_file, ")\n");
 
 		chk = (void *)current;
-		end = (void *)current->free->next;
+		end = (void *)current->end;
 
 		for (chk -= 128, end += 128; chk < end; chk += 2)
 		{
