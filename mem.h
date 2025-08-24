@@ -8,7 +8,6 @@
 #undef TRACE_GC
 #endif
 
-#include "spec.h"
 #include "types.h"
 
 /*

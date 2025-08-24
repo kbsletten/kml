@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "mem.h"
+#include "spec.h"
 
 #ifdef DEBUG
 
